@@ -77,7 +77,11 @@ def build_pyramid_dit(
             gradient_checkpointing_ratio=gradient_checkpointing_ratio,
             use_flash_attn=use_flash_attn, use_temporal_causal=use_temporal_causal,
             interp_condition_pos=interp_condition_pos, axes_dims_rope=[16, 24, 24],
-            subfolder="diffusion_transformer_768p"
+            subfolder="diffusion_transformer_768p", max_memory={
+                "0": "14GiB",  # GPU 0 will use up to 12 GiB of memory
+                "1": "14GiB",  # GPU 1 will use up to 12 GiB of memory
+                "cpu": "28GiB"  # CPU will use up to 30 GiB of memory
+            }, device_map='auto'
         )
     elif model_name == "pyramid_mmdit":
         dit = PyramidDiffusionMMDiT.from_pretrained(
@@ -163,7 +167,11 @@ class PyramidDiTForVideoGeneration:
         # The base video vae decoder
         if load_vae:
             self.vae = CausalVideoVAE.from_pretrained("BastinJerry/my-private-model", subfolder="causal_video_vae",
-                                                      torch_dtype=torch_dtype, interpolate=False)
+                                                      torch_dtype=torch_dtype, interpolate=False,max_memory={
+                "0": "14GiB",  # GPU 0 will use up to 12 GiB of memory
+                "1": "14GiB",  # GPU 1 will use up to 12 GiB of memory
+                "cpu": "28GiB"  # CPU will use up to 30 GiB of memory
+            }, device_map='auto')
             # Freeze vae
             for parameter in self.vae.parameters():
                 parameter.requires_grad = False
@@ -192,7 +200,7 @@ class PyramidDiTForVideoGeneration:
         self.frame_per_unit = frame_per_unit
         self.max_temporal_length = max_temporal_length
         assert (
-                           max_temporal_length - 1) % frame_per_unit == 0, "The frame number should be divided by the frame number per unit"
+                       max_temporal_length - 1) % frame_per_unit == 0, "The frame number should be divided by the frame number per unit"
         self.num_units_per_video = 1 + ((max_temporal_length - 1) // frame_per_unit) + int(sum(sample_ratios))
 
         self.scheduler = PyramidFlowMatchEulerDiscreteScheduler(
@@ -323,7 +331,7 @@ class PyramidDiTForVideoGeneration:
                 # Get the upsampled latent
                 last_clean_latent = rearrange(last_clean_latent, 'b c t h w -> (b t) c h w')
                 last_clean_latent = F.interpolate(last_clean_latent, size=(
-                last_clean_latent.shape[-2] * 2, last_clean_latent.shape[-1] * 2), mode='nearest')
+                    last_clean_latent.shape[-2] * 2, last_clean_latent.shape[-1] * 2), mode='nearest')
                 last_clean_latent = rearrange(last_clean_latent, '(b t) c h w -> b c t h w', t=t)
                 start_point = start_sigma * noise_list[i_s][index::column_size] + (1 - start_sigma) * last_clean_latent
 
@@ -475,7 +483,7 @@ class PyramidDiTForVideoGeneration:
                 # Get the upsampled latent
                 last_clean_latent = rearrange(last_clean_latent, 'b c t h w -> (b t) c h w')
                 last_clean_latent = F.interpolate(last_clean_latent, size=(
-                last_clean_latent.shape[-2] * 2, last_clean_latent.shape[-1] * 2), mode='nearest')
+                    last_clean_latent.shape[-2] * 2, last_clean_latent.shape[-1] * 2), mode='nearest')
                 last_clean_latent = rearrange(last_clean_latent, '(b t) c h w -> b c t h w', t=t)
                 start_point = start_sigma * noise_list[i_s][index::column_size] + (1 - start_sigma) * last_clean_latent
 
@@ -536,7 +544,7 @@ class PyramidDiTForVideoGeneration:
 
                 # We adding some noise to corrupt the clean condition
                 last_cond_latent = last_cond_noisy_sigma * torch.randn_like(last_cond_latent) + (
-                            1 - last_cond_noisy_sigma) * last_cond_latent
+                        1 - last_cond_noisy_sigma) * last_cond_latent
 
                 # concat the corrupted condition and the input noisy latents
                 stage_input = [noisy_latents.to(dtype), last_cond_latent.to(dtype)]
@@ -553,7 +561,7 @@ class PyramidDiTForVideoGeneration:
                     cond_latents = cond_latents[:, :,
                                    -(cur_unit_num * self.frame_per_unit): -((cur_unit_num - 1) * self.frame_per_unit)]
                     cond_latents = last_cond_noisy_sigma * torch.randn_like(cond_latents) + (
-                                1 - last_cond_noisy_sigma) * cond_latents
+                            1 - last_cond_noisy_sigma) * cond_latents
                     stage_input.append(cond_latents.to(dtype))
 
                 if cur_stage == 0 and cur_unit_num < num_units:
@@ -561,7 +569,7 @@ class PyramidDiTForVideoGeneration:
                     cond_latents = cond_latents[:, :, :-(cur_unit_num * self.frame_per_unit)]
 
                     cond_latents = last_cond_noisy_sigma * torch.randn_like(cond_latents) + (
-                                1 - last_cond_noisy_sigma) * cond_latents
+                            1 - last_cond_noisy_sigma) * cond_latents
                     stage_input.append(cond_latents.to(dtype))
 
             stage_input = list(reversed(stage_input))
@@ -804,7 +812,7 @@ class PyramidDiTForVideoGeneration:
                         noise_pred = noise_pred_uncond + self.guidance_scale * (noise_pred_text - noise_pred_uncond)
                     else:
                         noise_pred = noise_pred_uncond + self.video_guidance_scale * (
-                                    noise_pred_text - noise_pred_uncond)
+                                noise_pred_text - noise_pred_uncond)
 
                 # compute the previous noisy sample x_t -> x_t-1
                 latents = self.scheduler.step(
@@ -913,7 +921,7 @@ class PyramidDiTForVideoGeneration:
 
         # Create the initial random noise
         num_channels_latents = (
-                    self.dit.config.in_channels // 4) if self.model_name == "pyramid_flux" else self.dit.config.in_channels
+                self.dit.config.in_channels // 4) if self.model_name == "pyramid_flux" else self.dit.config.in_channels
         latents = self.prepare_latents(
             batch_size * num_images_per_prompt,
             num_channels_latents,
@@ -1142,7 +1150,7 @@ class PyramidDiTForVideoGeneration:
 
         # Create the initial random noise
         num_channels_latents = (
-                    self.dit.config.in_channels // 4) if self.model_name == "pyramid_flux" else self.dit.config.in_channels
+                self.dit.config.in_channels // 4) if self.model_name == "pyramid_flux" else self.dit.config.in_channels
         latents = self.prepare_latents(
             batch_size * num_images_per_prompt,
             num_channels_latents,
@@ -1221,7 +1229,7 @@ class PyramidDiTForVideoGeneration:
                             break
                         cur_unit_ptx += 1
                         cond_latents = clean_latents_list[cur_stage][:, :, -(cur_unit_ptx * self.frame_per_unit): -(
-                                    (cur_unit_ptx - 1) * self.frame_per_unit)]
+                                (cur_unit_ptx - 1) * self.frame_per_unit)]
                         stage_input.append(
                             torch.cat([cond_latents] * 2) if self.do_classifier_free_guidance else cond_latents)
 
