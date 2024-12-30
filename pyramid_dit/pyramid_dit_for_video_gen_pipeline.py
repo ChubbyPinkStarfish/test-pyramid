@@ -77,7 +77,7 @@ def build_pyramid_dit(
             gradient_checkpointing_ratio=gradient_checkpointing_ratio,
             use_flash_attn=use_flash_attn, use_temporal_causal=use_temporal_causal,
             interp_condition_pos=interp_condition_pos, axes_dims_rope=[16, 24, 24],
-            subfolder="diffusion_transformer_768p", max_memory={
+            subfolder="diffusion_transformer_384p", max_memory={
                 "0": "14GiB",  # GPU 0 will use up to 12 GiB of memory
                 "1": "14GiB",  # GPU 1 will use up to 12 GiB of memory
                 "cpu": "28GiB"  # CPU will use up to 30 GiB of memory
