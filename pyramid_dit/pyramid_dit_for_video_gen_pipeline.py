@@ -81,7 +81,7 @@ def build_pyramid_dit(
                 "0": "14GiB",  # GPU 0 will use up to 12 GiB of memory
                 "1": "14GiB",  # GPU 1 will use up to 12 GiB of memory
                 "cpu": "28GiB"  # CPU will use up to 30 GiB of memory
-            }, device_map='auto'
+            }
         )
     elif model_name == "pyramid_mmdit":
         dit = PyramidDiffusionMMDiT.from_pretrained(
@@ -171,7 +171,7 @@ class PyramidDiTForVideoGeneration:
                 "0": "14GiB",  # GPU 0 will use up to 12 GiB of memory
                 "1": "14GiB",  # GPU 1 will use up to 12 GiB of memory
                 "cpu": "28GiB"  # CPU will use up to 30 GiB of memory
-            }, device_map='auto')
+            })
             # Freeze vae
             for parameter in self.vae.parameters():
                 parameter.requires_grad = False

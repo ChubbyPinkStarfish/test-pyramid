@@ -26,7 +26,7 @@ class FluxTextEncoderWithMask(nn.Module):
                 "0": "14GiB",  # GPU 0 will use up to 12 GiB of memory
                 "1": "14GiB",  # GPU 1 will use up to 12 GiB of memory
                 "cpu": "28GiB"  # CPU will use up to 30 GiB of memory
-            }, device_map='auto')
+            })
 
         # T5
         self.tokenizer_2 = T5TokenizerFast.from_pretrained("BastinJerry/my-private-model", subfolder="tokenizer_2")
@@ -35,7 +35,7 @@ class FluxTextEncoderWithMask(nn.Module):
                 "0": "14GiB",  # GPU 0 will use up to 12 GiB of memory
                 "1": "14GiB",  # GPU 1 will use up to 12 GiB of memory
                 "cpu": "28GiB"  # CPU will use up to 30 GiB of memory
-            }, device_map='auto')
+            })
 
         self._freeze()
 
